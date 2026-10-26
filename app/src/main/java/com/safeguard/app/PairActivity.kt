@@ -1,99 +1,71 @@
 package com.safeguard.app
 
-import android.Manifest
-import android.content.pm.PackageManager
 import android.os.Bundle
+import android.view.View
 import android.widget.Toast
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
+import com.safeguard.app.databinding.ActivityPairBinding
 import com.safeguard.app.util.Prefs
-import java.util.concurrent.ThreadLocalRandom
-import kotlin.text.Regex
+import java.security.SecureRandom
+import java.util.Locale
 
 class PairActivity : AppCompatActivity() {
 
-    private val codeRegex = Regex("^[0-9]{6}$")
-
-    private val permissionLauncher =
-        registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
-            if (it[Manifest.permission.ACCESS_FINE_LOCATION] == true ||
-                it[Manifest.permission.ACCESS_COARSE_LOCATION] == true
-            ) {
-                Prefs.locationGranted = true
-            }
-            if (it[Manifest.permission.POST_NOTIFICATIONS] == true) {
-                Prefs.notificationGranted = true
-            }
-            if (it[Manifest.permission.READ_PHONE_STATE] == true) {
-                Prefs.phoneGranted = true
-            }
-            if (it[Manifest.permission.READ_CONTACTS] == true) {
-                Prefs.contactsGranted = true
-            }
-        }
+    private lateinit var binding: ActivityPairBinding
+    private var generatedCode: String? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_pair)
-        supportActionBar?.setTitle(R.string.pair_title)
+        binding = ActivityPairBinding.inflate(layoutInflater)
+        setContentView(binding.root)
+        supportActionBar?.setDisplayHomeAsUpEnabled(true)
+        supportActionBar?.title = getString(R.string.pair_title)
 
-        findViewById<android.widget.Button>(R.id.btn_generate).setOnClickListener {
-            val code = String.format("%06d", ThreadLocalRandom.current().nextInt(1_000_000))
+        if (Prefs.isPaired) {
+            binding.textPairCode.text = Prefs.pairCode
+            binding.textPairHint.text = getString(R.string.pair_current_hint, Prefs.pairCode)
+            binding.btnUnpairPair.visibility = View.VISIBLE
+        }
+
+        binding.btnCreate.setOnClickListener {
+            generatedCode = String.format(Locale.US, "%06d", SecureRandom().nextInt(1000000))
+            binding.textPairCode.text = generatedCode
+            binding.textPairHint.text = getString(R.string.pair_created_hint)
+            binding.btnStartPair.visibility = View.VISIBLE
+        }
+
+        binding.btnStartPair.setOnClickListener {
+            val code = generatedCode
+            if (code.isNullOrBlank()) return@setOnClickListener
             Prefs.pairCode = code
-            Prefs.paired = true
-            ensurePermissions()
-            Toast.makeText(this, R.string.pair_code_generated, Toast.LENGTH_LONG).show()
+            StatusHub.remoteStatus = null
             SafeguardService.start(this)
             finish()
         }
 
-        findViewById<android.widget.Button>(R.id.btn_join).setOnClickListener {
-            val code = findViewById<android.widget.EditText>(R.id.edit_code).text.toString().trim()
-            if (!codeRegex.matches(code)) {
-                Toast.makeText(this, R.string.pair_code_invalid, Toast.LENGTH_LONG).show()
+        binding.btnJoin.setOnClickListener {
+            val code = binding.editCode.text?.toString()?.trim().orEmpty()
+            if (!Regex("^\\d{6}$").matches(code)) {
+                Toast.makeText(this, R.string.pair_code_bad, Toast.LENGTH_LONG).show()
                 return@setOnClickListener
             }
             Prefs.pairCode = code
-            Prefs.paired = true
-            ensurePermissions()
+            StatusHub.remoteStatus = null
             SafeguardService.start(this)
             finish()
         }
 
-        findViewById<android.widget.Button>(R.id.btn_unpair).setOnClickListener {
-            Prefs.paired = false
+        binding.btnUnpairPair.setOnClickListener {
             Prefs.pairCode = ""
-            Toast.makeText(this, R.string.pair_unpaired, Toast.LENGTH_SHORT).show()
+            StatusHub.remoteStatus = null
+            SafeguardService.stop(this)
+            Toast.makeText(this, R.string.pair_unpaired_hint, Toast.LENGTH_SHORT).show()
             finish()
         }
     }
 
-    private fun ensurePermissions() {
-        val needed = mutableListOf<String>()
-        if (!Prefs.locationGranted) {
-            needed.add(Manifest.permission.ACCESS_FINE_LOCATION)
-            needed.add(Manifest.permission.ACCESS_COARSE_LOCATION)
-        }
-        if (android.os.Build.VERSION.SDK_INT >= 33 && !Prefs.notificationGranted) {
-            needed.add(Manifest.permission.POST_NOTIFICATIONS)
-        }
-        if (!Prefs.phoneGranted) {
-            needed.add(Manifest.permission.READ_PHONE_STATE)
-        }
-        if (!Prefs.contactsGranted) {
-            needed.add(Manifest.permission.READ_CONTACTS)
-        }
-        if (needed.isNotEmpty()) {
-            permissionLauncher.launch(needed.toTypedArray())
-        }
-    }
-
-    @Suppress("DEPRECATION")
-    override fun onRequestPermissionsResult(
-        requestCode: Int,
-        permissions: Array<out String>,
-        grantResults: IntArray
-    ) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+    override fun onSupportNavigateUp(): Boolean {
+        finish()
+        return true
     }
 }
