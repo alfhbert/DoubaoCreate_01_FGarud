@@ -17,6 +17,7 @@
 - [权限清单](#权限清单)
 - [安全与隐私设计](#安全与隐私设计)
 - [技术架构](#技术架构)
+- [代码级测试](#代码级测试)
 - [从源码构建](#从源码构建)
 - [发布签名说明](#发布签名说明)
 - [已知限制](#已知限制)
@@ -135,6 +136,19 @@
 
 技术栈：Kotlin · 经典 View（无 Compose）· AndroidX / Material 3 · Paho MQTT · osmdroid · Gson。
 
+## 代码级测试
+
+单元 / 模块 / 集成 / 功能链路测试（JUnit 4 + Robolectric，JVM 运行，无需模拟器）：
+
+```bash
+gradle testDebugUnitTest --no-daemon
+```
+
+- 10 个测试套件、**57 个用例全部通过**（0 失败）；
+- 覆盖：反诈识别规则、AES-GCM 加解密链路、配对流程、低电量/安全区判定、事件存储、偏好存储、主界面渲染与状态同步、状态中枢；
+- 报告输出：`app/build/reports/tests/testDebugUnitTest/index.html`；
+- 说明：双机真机互连（MQTT 实际收发）需真机联调，不在 JVM 测试范围。
+
 ## 从源码构建
 
 ```bash
@@ -158,7 +172,7 @@ gradle assembleRelease        # release 包（未配置密钥时自动使用 deb
   export SAFEGUARD_KEYSTORE_PASS=...
   export SAFEGUARD_KEY_ALIAS=safetyguard
   export SAFEGUARD_KEY_PASS=...
-  gradle assembleRelease
+  ./gradlew assembleRelease
   ```
 - 未提供环境变量时，release 自动降级为 debug 签名，便于任何人开箱构建；
 - **密钥一旦丢失无法找回**，且更换密钥会导致已安装用户无法直接升级覆盖安装，请妥善备份、切勿上传 GitHub。
