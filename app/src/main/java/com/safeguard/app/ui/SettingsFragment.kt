@@ -1,175 +1,192 @@
 package com.safeguard.app.ui
 
-import android.Manifest
-import android.content.Context
-import android.content.pm.PackageManager
-import android.os.Build
+import android.graphics.Color
 import android.os.Bundle
+import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.CompoundButton
-import android.widget.EditText
-import android.widget.Switch
+import android.widget.LinearLayout
+import android.widget.SeekBar
 import android.widget.TextView
-import androidx.activity.result.contract.ActivityResultContracts
-import androidx.appcompat.app.AlertDialog
+import android.widget.Toast
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
+import com.google.android.material.button.MaterialButton
 import com.safeguard.app.R
 import com.safeguard.app.SafeguardService
+import com.safeguard.app.StatusHub
+import com.safeguard.app.databinding.FragmentSettingsBinding
+import com.safeguard.app.util.FontScaler
 import com.safeguard.app.util.Prefs
+import java.util.Locale
 
 class SettingsFragment : Fragment() {
 
-    private val permissionLauncher =
-        registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
-            if (it[Manifest.permission.ACCESS_BACKGROUND_LOCATION] == true) {
-                Prefs.backgroundLocationGranted = true
-            }
-        }
+    private var _binding: FragmentSettingsBinding? = null
+    private val binding get() = _binding!!
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?
     ): View {
-        val v = inflater.inflate(R.layout.fragment_settings, container, false)
+        _binding = FragmentSettingsBinding.inflate(inflater, container, false)
+        return binding.root
+    }
 
-        val swService = v.findViewById<Switch>(R.id.sw_service)
-        swService.isChecked = Prefs.serviceEnabled
-        swService.setOnCheckedChangeListener { _: CompoundButton, checked: Boolean ->
-            Prefs.serviceEnabled = checked
-            if (checked) {
-                SafeguardService.start(requireContext())
-            } else {
-                SafeguardService.stop(requireContext())
-            }
-        }
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
+        FontScaler.apply(binding.root, if (Prefs.largeFont) 1f else 0.82f)
 
-        val etName = v.findViewById<EditText>(R.id.et_device_name)
-        etName.setText(Prefs.deviceName)
-        v.findViewById<View>(R.id.btn_save_name).setOnClickListener {
-            val name = etName.text.toString().trim()
-            if (name.isNotEmpty()) {
+        binding.btnSaveName.setOnClickListener {
+            val name = binding.editDeviceName.text?.toString()?.trim()
+            if (!name.isNullOrBlank()) {
                 Prefs.deviceName = name
-                android.widget.Toast.makeText(requireContext(), R.string.saved, android.widget.Toast.LENGTH_SHORT).show()
+                Toast.makeText(requireContext(), R.string.toast_saved, Toast.LENGTH_SHORT).show()
             }
         }
 
-        val swBigFont = v.findViewById<Switch>(R.id.sw_big_font)
-        swBigFont.isChecked = Prefs.bigFont
-        swBigFont.setOnCheckedChangeListener { _, checked ->
-            Prefs.bigFont = checked
-            android.widget.Toast.makeText(requireContext(), R.string.font_changed, android.widget.Toast.LENGTH_SHORT).show()
+        binding.switchService.setOnCheckedChangeListener { _, checked ->
+            Prefs.serviceEnabled = checked
+            if (checked) SafeguardService.start(requireContext())
+            else SafeguardService.stop(requireContext())
         }
 
-        val tvThreshold = v.findViewById<TextView>(R.id.tv_threshold)
-        tvThreshold.text = getString(R.string.threshold_text, Prefs.lowBatteryThreshold)
-        v.findViewById<View>(R.id.btn_threshold).setOnClickListener {
-            val presets = intArrayOf(10, 15, 20, 25, 30, 40, 50)
-            val labels = presets.map { getString(R.string.threshold_value, it) }.toTypedArray()
-            AlertDialog.Builder(requireContext())
-                .setTitle(R.string.threshold_title)
-                .setItems(labels) { _, which ->
-                    Prefs.lowBatteryThreshold = presets[which]
-                    tvThreshold.text = getString(R.string.threshold_text, Prefs.lowBatteryThreshold)
-                }
-                .show()
-        }
-
-        val tvZone = v.findViewById<TextView>(R.id.tv_zone)
-        refreshZoneText(tvZone)
-        v.findViewById<View>(R.id.btn_set_zone).setOnClickListener {
-            val dialog = AlertDialog.Builder(requireContext())
-            dialog.setTitle(R.string.zone_title)
-            val latInput = EditText(requireContext()).apply { hint = getString(R.string.zone_lat_hint) }
-            val lngInput = EditText(requireContext()).apply { hint = getString(R.string.zone_lng_hint) }
-            val radiusInput = EditText(requireContext()).apply { hint = getString(R.string.zone_radius_hint) }
-            val layout = android.widget.LinearLayout(requireContext()).apply {
-                orientation = android.widget.LinearLayout.VERTICAL
-                addView(latInput)
-                addView(lngInput)
-                addView(radiusInput)
+        binding.seekBattery.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
+                Prefs.lowBatteryThreshold = progress
+                binding.textBatteryValue.text = getString(
+                    R.string.set_battery_threshold_value, progress
+                )
             }
-            dialog.setView(layout)
-            dialog.setPositiveButton(R.string.ok) { _, _ ->
-                val lat = latInput.text.toString().toDoubleOrNull()
-                val lng = lngInput.text.toString().toDoubleOrNull()
-                val radius = radiusInput.text.toString().toIntOrNull()
-                if (lat != null && lng != null && radius != null && radius > 0) {
-                    Prefs.safeZoneLat = lat
-                    Prefs.safeZoneLng = lng
-                    Prefs.safeZoneRadius = radius
-                    Prefs.safeZoneEnabled = true
-                    refreshZoneText(tvZone)
-                } else {
-                    android.widget.Toast.makeText(requireContext(), R.string.zone_invalid, android.widget.Toast.LENGTH_SHORT).show()
-                }
-            }
-            dialog.setNegativeButton(R.string.cancel, null)
-            dialog.show()
-        }
-        v.findViewById<View>(R.id.btn_clear_zone).setOnClickListener {
-            Prefs.safeZoneEnabled = false
-            refreshZoneText(tvZone)
+
+            override fun onStartTrackingTouch(seekBar: SeekBar?) {}
+            override fun onStopTrackingTouch(seekBar: SeekBar?) {}
+        })
+
+        binding.switchSafeZone.setOnCheckedChangeListener { _, checked ->
+            Prefs.safeZoneEnabled = checked
+            updateSafeZoneState()
         }
 
-        val tvBlack = v.findViewById<TextView>(R.id.tv_blacklist)
-        refreshBlacklist(tvBlack)
-        v.findViewById<View>(R.id.btn_blacklist).setOnClickListener {
-            val input = EditText(requireContext()).apply { hint = getString(R.string.blacklist_hint) }
-            AlertDialog.Builder(requireContext())
-                .setTitle(R.string.blacklist_title)
-                .setView(input)
-                .setPositiveButton(R.string.ok) { _, _ ->
-                    val num = input.text.toString().trim()
-                    if (num.isNotEmpty()) {
-                        val list = Prefs.blacklistList().toMutableList()
-                        if (!list.contains(num)) list.add(num)
-                        Prefs.blacklistSave(list)
-                        refreshBlacklist(tvBlack)
-                    }
-                }
-                .setNegativeButton(R.string.cancel, null)
-                .show()
-        }
-        v.findViewById<View>(R.id.btn_clear_blacklist).setOnClickListener {
-            Prefs.blacklistSave(emptyList())
-            refreshBlacklist(tvBlack)
-        }
-
-        v.findViewById<View>(R.id.btn_background_location).setOnClickListener {
-            if (Build.VERSION.SDK_INT >= 30 && !Prefs.backgroundLocationGranted) {
-                permissionLauncher.launch(arrayOf(Manifest.permission.ACCESS_BACKGROUND_LOCATION))
+        binding.btnSetHere.setOnClickListener {
+            val my = StatusHub.myStatus
+            if (my?.hasLocation == true) {
+                Prefs.safeZoneLat = my.lat
+                Prefs.safeZoneLng = my.lng
+                updateSafeZoneState()
+                Toast.makeText(requireContext(), R.string.toast_zone_set, Toast.LENGTH_SHORT).show()
             } else {
-                android.widget.Toast.makeText(requireContext(), R.string.bg_location_done, android.widget.Toast.LENGTH_SHORT).show()
+                Toast.makeText(requireContext(), R.string.toast_no_loc, Toast.LENGTH_LONG).show()
             }
         }
 
-        v.findViewById<View>(R.id.btn_events_clear).setOnClickListener {
-            com.safeguard.app.util.EventsStore.clear(requireContext())
-            android.widget.Toast.makeText(requireContext(), R.string.events_cleared, android.widget.Toast.LENGTH_SHORT).show()
+        binding.seekRadius.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
+                val r = 200 + progress * 100
+                Prefs.safeZoneRadius = r
+                binding.textRadiusValue.text = getString(R.string.set_safe_zone_radius_value, r)
+            }
+
+            override fun onStartTrackingTouch(seekBar: SeekBar?) {}
+            override fun onStopTrackingTouch(seekBar: SeekBar?) {}
+        })
+
+        binding.btnAddBlacklist.setOnClickListener {
+            val n = binding.editBlacklist.text?.toString()?.trim()
+            if (!n.isNullOrBlank()) {
+                Prefs.addBlacklist(n)
+                binding.editBlacklist.setText("")
+                renderBlacklist()
+            }
         }
 
-        return v
+        binding.switchLargeFont.setOnCheckedChangeListener { _, checked ->
+            Prefs.largeFont = checked
+            activity?.recreate()
+        }
+
+        loadValues()
     }
 
-    private fun refreshZoneText(tv: TextView) {
-        tv.text = if (Prefs.safeZoneEnabled) {
-            getString(
-                R.string.zone_text,
-                Prefs.safeZoneLat, Prefs.safeZoneLng, Prefs.safeZoneRadius
+    override fun onResume() {
+        super.onResume()
+        loadValues()
+    }
+
+    override fun onDestroyView() {
+        _binding = null
+        super.onDestroyView()
+    }
+
+    private fun loadValues() {
+        binding.editDeviceName.setText(Prefs.deviceName)
+        binding.switchService.isChecked = Prefs.serviceEnabled
+        binding.seekBattery.progress = Prefs.lowBatteryThreshold.coerceIn(10, 50)
+        binding.textBatteryValue.text = getString(
+            R.string.set_battery_threshold_value, Prefs.lowBatteryThreshold
+        )
+        binding.switchSafeZone.isChecked = Prefs.safeZoneEnabled
+        val r = Prefs.safeZoneRadius.coerceIn(200, 5000)
+        binding.seekRadius.progress = (r - 200) / 100
+        binding.textRadiusValue.text = getString(R.string.set_safe_zone_radius_value, r)
+        binding.switchLargeFont.isChecked = Prefs.largeFont
+        updateSafeZoneState()
+        renderBlacklist()
+    }
+
+    private fun updateSafeZoneState() {
+        binding.textSafeZoneState.text = when {
+            !Prefs.safeZoneEnabled -> getString(R.string.set_safe_zone_off)
+            Prefs.safeZoneLat == 0.0 && Prefs.safeZoneLng == 0.0 ->
+                getString(R.string.set_safe_zone_none)
+            else -> String.format(
+                Locale.CHINA,
+                "安全中心：%.4f, %.4f · 半径 %d 米",
+                Prefs.safeZoneLat,
+                Prefs.safeZoneLng,
+                Prefs.safeZoneRadius
             )
-        } else {
-            getString(R.string.zone_disabled)
         }
     }
 
-    private fun refreshBlacklist(tv: TextView) {
-        val list = Prefs.blacklistList()
-        tv.text = if (list.isEmpty()) {
-            getString(R.string.blacklist_empty)
-        } else {
-            list.joinToString("、")
+    private fun renderBlacklist() {
+        binding.containerBlacklist.removeAllViews()
+        val items = Prefs.blacklistList()
+        if (items.isEmpty()) {
+            val tv = TextView(requireContext()).apply {
+                text = getString(R.string.set_blacklist_empty)
+                textSize = 14f
+                setTextColor(ContextCompat.getColor(requireContext(), R.color.text_secondary))
+                setPadding(4, 8, 4, 8)
+            }
+            binding.containerBlacklist.addView(tv)
+            return
+        }
+        for (n in items) {
+            val row = LinearLayout(requireContext()).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER_VERTICAL
+            }
+            val tv = TextView(requireContext()).apply {
+                text = n
+                textSize = 16f
+                setTextColor(ContextCompat.getColor(requireContext(), R.color.text_primary))
+                layoutParams = LinearLayout.LayoutParams(
+                    0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f
+                )
+            }
+            val btn = MaterialButton(requireContext()).apply {
+                text = getString(R.string.btn_remove)
+                textSize = 14f
+                isAllCaps = false
+            }
+            btn.setOnClickListener {
+                Prefs.removeBlacklist(n)
+                renderBlacklist()
+            }
+            row.addView(tv)
+            row.addView(btn)
+            binding.containerBlacklist.addView(row)
         }
     }
 }

@@ -1,137 +1,117 @@
 package com.safeguard.app.ui
 
-import android.Manifest
-import android.content.pm.PackageManager
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.TextView
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import com.safeguard.app.R
 import com.safeguard.app.StatusHub
-import com.safeguard.app.util.Prefs
-import org.osmdroid.config.Configuration
-import org.osmdroid.tileprovider.tilesource.TileSourceFactory
+import com.safeguard.app.databinding.FragmentMapBinding
+import com.safeguard.app.util.LocationUtils
 import org.osmdroid.util.GeoPoint
-import org.osmdroid.views.MapView
+import org.osmdroid.views.overlay.Marker
 
 class MapFragment : Fragment() {
 
-    private var mapView: MapView? = null
-    private var tvHint: TextView? = null
-    private var myMarker: org.osmdroid.views.overlay.Marker? = null
-    private var remoteMarker: org.osmdroid.views.overlay.Marker? = null
-    private var lastMy: GeoPoint? = null
-    private var lastRemote: GeoPoint? = null
+    private var _binding: FragmentMapBinding? = null
+    private val binding get() = _binding!!
+    private var myMarker: Marker? = null
+    private var remoteMarker: Marker? = null
+    private var follow = true
+
+    private val refreshListener: () -> Unit = { refreshMarkers() }
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?
     ): View {
-        val v = inflater.inflate(R.layout.fragment_map, container, false)
-        mapView = v.findViewById(R.id.map_view)
-        tvHint = v.findViewById(R.id.tv_map_hint)
-        return v
+        _binding = FragmentMapBinding.inflate(inflater, container, false)
+        return binding.root
     }
 
-    override fun onResume() {
-        super.onResume()
-        StatusHub.addListener(listener)
-        setupMapIfNeeded()
-        refresh()
-    }
-
-    override fun onPause() {
-        super.onPause()
-        StatusHub.removeListener(listener)
-    }
-
-    private val listener: () -> Unit = { refresh() }
-
-    private fun setupMapIfNeeded() {
-        val map = mapView ?: return
-        if (map.tileSource != null) return
-        Configuration.getInstance().load(requireContext(), androidx.preference.PreferenceManager.getDefaultSharedPreferences(requireContext()))
-        map.setTileSource(TileSourceFactory.MAPNIK)
-        map.setMultiTouchControls(true)
-        map.controller.setZoom(14.0)
-        map.controller.setCenter(GeoPoint(45.8038, 126.5349))
-
-        myMarker = org.osmdroid.views.overlay.Marker(map).apply {
-            icon = ContextCompat.getDrawable(requireContext(), R.drawable.marker_me)
-            setAnchor(0.5f, 0.5f)
-            title = "我"
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
+        binding.map.setMultiTouchControls(true)
+        binding.map.controller.setZoom(12.0)
+        binding.btnFollow.setOnClickListener {
+            follow = !follow
+            binding.btnFollow.setText(if (follow) R.string.map_follow else R.string.map_unfollow)
+            if (follow) centerOnRemote()
         }
-        remoteMarker = org.osmdroid.views.overlay.Marker(map).apply {
-            icon = ContextCompat.getDrawable(requireContext(), R.drawable.marker_remote)
-            setAnchor(0.5f, 0.5f)
-            title = "对方"
-        }
-        map.overlays.add(myMarker)
-        map.overlays.add(remoteMarker)
+        refreshMarkers()
     }
 
-    private fun refresh() {
-        val map = mapView ?: return
-        val me = StatusHub.myStatus
+    override fun onStart() {
+        super.onStart()
+        binding.map.onResume()
+        StatusHub.addListener(refreshListener)
+        refreshMarkers()
+    }
+
+    override fun onStop() {
+        StatusHub.removeListener(refreshListener)
+        binding.map.onPause()
+        super.onStop()
+    }
+
+    override fun onDestroyView() {
+        binding.map.onDetach()
+        _binding = null
+        super.onDestroyView()
+    }
+
+    private fun refreshMarkers() {
+        val map = binding.map
+        val my = StatusHub.myStatus
         val remote = StatusHub.remoteStatus
+        val context = requireContext()
 
-        val myPoint = me?.takeIf { it.hasLocation && (it.lat != 0.0 || it.lng != 0.0) }?.let {
-            GeoPoint(it.lat, it.lng)
-        }
-        val remotePoint = remote?.takeIf { it.hasLocation && (it.lat != 0.0 || it.lng != 0.0) }?.let {
-            GeoPoint(it.lat, it.lng)
-        }
-
-        myMarker?.apply {
-            if (myPoint != null) {
-                position = myPoint
-                isEnabled = true
-            } else {
-                isEnabled = false
+        if (my?.hasLocation == true) {
+            if (myMarker == null) {
+                myMarker = Marker(map).apply {
+                    setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
+                    icon = ContextCompat.getDrawable(context, R.drawable.marker_me)
+                    title = getString(R.string.map_me)
+                }
+                map.overlays.add(myMarker)
             }
-        }
-        remoteMarker?.apply {
-            if (remotePoint != null) {
-                position = remotePoint
-                isEnabled = true
-            } else {
-                isEnabled = false
-            }
+            myMarker?.position = GeoPoint(my.lat, my.lng)
+            myMarker?.infoWindow = null
+        } else {
+            myMarker?.let { map.overlays.remove(it) }
+            myMarker = null
         }
 
-        when {
-            !Prefs.isPaired -> {
-                tvHint?.text = getString(R.string.map_hint_unpaired)
-            }
-            remotePoint == null && myPoint == null -> {
-                tvHint?.text = getString(R.string.map_hint_waiting)
-            }
-            remotePoint != null && myPoint != null -> {
-                tvHint?.text = getString(R.string.map_hint_both)
-                if (lastRemote?.latitude != remotePoint.latitude || lastRemote?.longitude != remotePoint.longitude ||
-                    lastMy?.latitude != myPoint.latitude || lastMy?.longitude != myPoint.longitude
-                ) {
-                    map.controller.animateTo(remotePoint)
-                    lastRemote = remotePoint
-                    lastMy = myPoint
+        if (remote?.hasLocation == true) {
+            if (remoteMarker == null) {
+                remoteMarker = Marker(map).apply {
+                    setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
+                    icon = ContextCompat.getDrawable(context, R.drawable.marker_remote)
                 }
+                map.overlays.add(remoteMarker)
             }
-            remotePoint != null -> {
-                tvHint?.text = getString(R.string.map_hint_follow_remote)
-                if (lastRemote?.latitude != remotePoint.latitude || lastRemote?.longitude != remotePoint.longitude) {
-                    map.controller.animateTo(remotePoint)
-                    lastRemote = remotePoint
-                }
+            remoteMarker?.position = GeoPoint(remote.lat, remote.lng)
+            remoteMarker?.title = remote.deviceName
+            remoteMarker?.infoWindow = null
+            binding.textMapStatus.text =
+                "${remote.deviceName} · ${LocationUtils.formatTime(remote.ts)}"
+            if (follow) centerOnRemote()
+        } else {
+            remoteMarker?.let { map.overlays.remove(it) }
+            remoteMarker = null
+            binding.textMapStatus.text = getString(R.string.remote_unknown)
+            if (my?.hasLocation == true) {
+                map.controller.animateTo(GeoPoint(my.lat, my.lng), 15.0, 500L)
             }
-            else -> {
-                tvHint?.text = getString(R.string.map_hint_follow_me)
-                if (lastMy?.latitude != myPoint?.latitude || lastMy?.longitude != myPoint?.longitude) {
-                    myPoint?.let { map.controller.animateTo(it) }
-                    lastMy = myPoint
-                }
-            }
+        }
+        map.invalidate()
+    }
+
+    private fun centerOnRemote() {
+        val remote = StatusHub.remoteStatus
+        if (remote?.hasLocation == true) {
+            binding.map.controller.animateTo(GeoPoint(remote.lat, remote.lng), 15.0, 500L)
         }
     }
 }
