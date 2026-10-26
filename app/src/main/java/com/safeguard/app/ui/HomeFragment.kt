@@ -1,195 +1,191 @@
 package com.safeguard.app.ui
 
-import android.Manifest
-import android.content.pm.PackageManager
+import android.content.Intent
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.TextView
-import androidx.activity.result.contract.ActivityResultContracts
-import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
+import com.google.android.material.bottomnavigation.BottomNavigationView
+import com.safeguard.app.AntiFraudActivity
+import com.safeguard.app.MainActivity
+import com.safeguard.app.PairActivity
 import com.safeguard.app.R
 import com.safeguard.app.SafeguardService
 import com.safeguard.app.StatusHub
-import com.safeguard.app.net.DeviceStatus
-import com.safeguard.app.util.DeviceInfo
-import com.safeguard.app.util.Prefs
+import com.safeguard.app.databinding.FragmentHomeBinding
+import com.safeguard.app.util.FontScaler
 import com.safeguard.app.util.LocationUtils
+import com.safeguard.app.util.Prefs
 
 class HomeFragment : Fragment() {
 
-    private val permissionLauncher =
-        registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
-            if (it[Manifest.permission.ACCESS_FINE_LOCATION] == true ||
-                it[Manifest.permission.ACCESS_COARSE_LOCATION] == true
-            ) {
-                Prefs.locationGranted = true
-            }
-            if (it[Manifest.permission.POST_NOTIFICATIONS] == true) {
-                Prefs.notificationGranted = true
-            }
-            if (it[Manifest.permission.READ_PHONE_STATE] == true) {
-                Prefs.phoneGranted = true
-            }
-            if (it[Manifest.permission.READ_CONTACTS] == true) {
-                Prefs.contactsGranted = true
-            }
-            refresh()
-        }
+    private var _binding: FragmentHomeBinding? = null
+    private val binding get() = _binding!!
 
-    private lateinit var tvRemoteName: TextView
-    private lateinit var tvRemoteBattery: TextView
-    private lateinit var tvRemoteLoc: TextView
-    private lateinit var tvRemoteCall: TextView
-    private lateinit var tvDistance: TextView
-    private lateinit var tvConn: TextView
-    private lateinit var tvSosHint: TextView
-    private lateinit var btnSos: View
-    private lateinit var tvMyName: TextView
-    private lateinit var tvMyBattery: TextView
+    private val refreshListener: () -> Unit = { refresh() }
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?
     ): View {
-        val v = inflater.inflate(R.layout.fragment_home, container, false)
-        tvRemoteName = v.findViewById(R.id.tv_remote_name)
-        tvRemoteBattery = v.findViewById(R.id.tv_remote_battery)
-        tvRemoteLoc = v.findViewById(R.id.tv_remote_loc)
-        tvRemoteCall = v.findViewById(R.id.tv_remote_call)
-        tvDistance = v.findViewById(R.id.tv_distance)
-        tvConn = v.findViewById(R.id.tv_conn)
-        tvSosHint = v.findViewById(R.id.tv_sos_hint)
-        btnSos = v.findViewById(R.id.btn_sos)
-        tvMyName = v.findViewById(R.id.tv_my_name)
-        tvMyBattery = v.findViewById(R.id.tv_my_battery)
-
-        btnSos.setOnClickListener {
-            if (Prefs.isPaired) {
-                SafeguardService.sendSos(requireContext())
-            } else {
-                tvSosHint.text = getString(R.string.sos_unpaired_hint)
-            }
-        }
-        return v
+        _binding = FragmentHomeBinding.inflate(inflater, container, false)
+        return binding.root
     }
 
-    override fun onResume() {
-        super.onResume()
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
+
+        binding.btnPair.setOnClickListener {
+            startActivity(Intent(requireContext(), PairActivity::class.java))
+        }
+        binding.btnUnpair.setOnClickListener {
+            Prefs.pairCode = ""
+            StatusHub.remoteStatus = null
+            StatusHub.connected = false
+            refresh()
+        }
+        binding.btnSos.setOnClickListener {
+            SafeguardService.sendSos(requireContext())
+        }
+        binding.btnMap.setOnClickListener { openTab(R.id.nav_map) }
+        binding.btnEvents.setOnClickListener { openTab(R.id.nav_events) }
+        binding.btnAntiFraud.setOnClickListener {
+            startActivity(Intent(requireContext(), AntiFraudActivity::class.java))
+        }
+        binding.switchService.setOnCheckedChangeListener { _, checked ->
+            Prefs.serviceEnabled = checked
+            if (checked) SafeguardService.start(requireContext())
+            else SafeguardService.stop(requireContext())
+        }
+
+        FontScaler.apply(binding.root, if (Prefs.largeFont) 1f else 0.82f)
+    }
+
+    override fun onStart() {
+        super.onStart()
         StatusHub.addListener(refreshListener)
         refresh()
     }
 
-    override fun onPause() {
-        super.onPause()
+    override fun onStop() {
         StatusHub.removeListener(refreshListener)
+        super.onStop()
     }
 
-    private val refreshListener: () -> Unit = { refresh() }
+    override fun onDestroyView() {
+        _binding = null
+        super.onDestroyView()
+    }
+
+    private fun openTab(id: Int) {
+        val act = activity as? MainActivity ?: return
+        act.findViewById<BottomNavigationView>(R.id.bottomNav)?.selectedItemId = id
+    }
 
     private fun refresh() {
-        if (!::tvRemoteName.isInitialized) return
-        val ctx = requireContext()
+        binding.switchService.isChecked = Prefs.serviceEnabled
 
-        tvMyName.text = getString(R.string.me_label, Prefs.deviceName)
-        tvMyBattery.text = getString(
-            R.string.battery_text,
-            DeviceInfo.batteryLevel(ctx),
-            if (DeviceInfo.isCharging(ctx)) getString(R.string.charging) else getString(R.string.not_charging)
-        )
-
-        tvConn.text = when {
-            !Prefs.isPaired -> getString(R.string.conn_unpaired)
-            StatusHub.connected -> getString(R.string.conn_online, StatusHub.broker)
-            else -> getString(R.string.conn_connecting)
+        binding.textServiceState.text = when {
+            !Prefs.isPaired -> getString(R.string.service_state_unpaired)
+            !Prefs.serviceEnabled -> getString(R.string.service_state_stopped)
+            StatusHub.connected -> getString(R.string.service_state)
+            else -> getString(R.string.service_state_connecting)
         }
 
-        val remote = StatusHub.remoteStatus
-        if (remote == null) {
-            tvRemoteName.text = getString(R.string.remote_unpaired_or_offline)
-            tvRemoteBattery.text = ""
-            tvRemoteLoc.text = ""
-            tvRemoteCall.text = ""
-            tvDistance.text = ""
-            btnSos.isEnabled = Prefs.isPaired
+        if (Prefs.isPaired) {
+            binding.textPairState.text = getString(R.string.pair_state_ok, Prefs.pairCode)
+            binding.btnPair.setText(R.string.btn_pair_manage)
+            binding.btnUnpair.visibility = View.VISIBLE
         } else {
-            renderRemote(remote)
+            binding.textPairState.text = getString(R.string.pair_state_none)
+            binding.btnPair.setText(R.string.btn_pair_go)
+            binding.btnUnpair.visibility = View.GONE
         }
 
-        val missing = missingPermissions(ctx)
-        if (missing.isNotEmpty()) {
-            tvSosHint.text = getString(R.string.permission_hint, missing.joinToString("、"))
-            tvSosHint.visibility = View.VISIBLE
-            permissionLauncher.launch(missing.toTypedArray())
+        // 我的设备
+        val my = StatusHub.myStatus
+        if (my != null) {
+            binding.progressBattery.progress = my.battery.coerceIn(0, 100)
+            binding.textBattery.text = if (my.battery >= 0) {
+                getString(R.string.battery_value, my.battery)
+            } else {
+                getString(R.string.battery_unknown)
+            }
+            binding.textMyCharge.text = when {
+                my.battery < 0 -> getString(R.string.charging_unknown)
+                my.charging -> getString(R.string.charging_yes)
+                else -> getString(R.string.charging_no)
+            }
         } else {
-            tvSosHint.visibility = View.GONE
+            binding.progressBattery.progress = 0
+            binding.textBattery.text = getString(R.string.battery_unknown)
+            binding.textMyCharge.text = getString(R.string.charging_unknown)
         }
-    }
-
-    private fun renderRemote(s: DeviceStatus) {
-        tvRemoteName.text = s.deviceName
-        tvRemoteBattery.text = if (s.battery in 0..100) {
-            getString(
-                R.string.battery_text,
-                s.battery,
-                if (s.charging) getString(R.string.charging) else getString(R.string.not_charging)
-            )
-        } else {
-            getString(R.string.battery_unknown)
-        }
-        tvRemoteLoc.text = if (s.hasLocation) {
-            getString(
-                R.string.loc_text,
-                String.format(java.util.Locale.CHINA, "%.4f, %.4f", s.lat, s.lng)
-            )
+        binding.textMyCall.text = callText(my?.callState)
+        binding.textMyLocation.text = if (my?.hasLocation == true) {
+            getString(R.string.loc_value, my.lat, my.lng, my.accuracy.toInt())
         } else {
             getString(R.string.loc_none)
         }
-        tvRemoteCall.text = callText(s)
-        tvDistance.text = if (s.hasLocation && (s.lat != 0.0 || s.lng != 0.0)) {
-            getString(R.string.distance_text, LocationUtils.formatDistance(LocationUtils.distanceMeters(0.0, 0.0, 0.0, 0.0)))
+
+        // 对方设备
+        val remote = StatusHub.remoteStatus
+        if (remote != null) {
+            binding.textRemoteName.text = remote.deviceName
+            binding.textRemoteBattery.text = if (remote.battery >= 0) {
+                getString(R.string.battery_value, remote.battery)
+            } else {
+                getString(R.string.battery_unknown)
+            }
+            binding.textRemoteCall.text = callText(remote.callState)
+            binding.textRemoteLocation.text = if (remote.hasLocation) {
+                getString(R.string.loc_value, remote.lat, remote.lng, remote.accuracy.toInt())
+            } else {
+                getString(R.string.loc_none)
+            }
+
+            if (remote.hasLocation && my?.hasLocation == true) {
+                val d = LocationUtils.distanceMeters(my.lat, my.lng, remote.lat, remote.lng)
+                binding.textRemoteDistance.text = getString(
+                    R.string.remote_distance, LocationUtils.formatDistance(d)
+                )
+                binding.textRemoteDistance.visibility = View.VISIBLE
+            } else {
+                binding.textRemoteDistance.visibility = View.GONE
+            }
+
+            val stale = System.currentTimeMillis() - remote.ts > 3 * 60 * 1000L
+            if (stale) {
+                binding.textRemoteOffline.text = getString(
+                    R.string.remote_offline, LocationUtils.formatTime(remote.ts)
+                )
+                binding.textRemoteOffline.visibility = View.VISIBLE
+            } else {
+                binding.textRemoteOffline.visibility = View.GONE
+            }
+
+            if (remote.scamRisk > 0) {
+                binding.badgeScam.text = getString(R.string.scam_badge, remote.scamReason)
+                binding.badgeScam.visibility = View.VISIBLE
+            } else {
+                binding.badgeScam.visibility = View.GONE
+            }
         } else {
-            ""
-        }
-        btnSos.isEnabled = Prefs.isPaired
-    }
-
-    private fun callText(s: DeviceStatus): String {
-        val base = when (s.callState) {
-            "ringing" -> getString(R.string.call_ringing)
-            "offhook" -> getString(R.string.call_offhook)
-            else -> getString(R.string.call_idle)
-        }
-        val number = s.callNumber
-        val contact = s.callContact
-        return when {
-            number.isNullOrBlank() && contact.isNullOrBlank() -> base
-            contact != null -> "$base · $contact（$number）"
-            else -> "$base · $number"
+            binding.textRemoteName.text = getString(R.string.card_remote)
+            binding.textRemoteBattery.text = getString(R.string.battery_unknown)
+            binding.textRemoteCall.text = getString(R.string.call_unknown)
+            binding.textRemoteLocation.text = getString(R.string.loc_none)
+            binding.textRemoteDistance.visibility = View.GONE
+            binding.textRemoteOffline.text = getString(R.string.remote_unknown)
+            binding.textRemoteOffline.visibility = View.VISIBLE
+            binding.badgeScam.visibility = View.GONE
         }
     }
 
-    private fun missingPermissions(ctx: android.content.Context): List<String> {
-        val missing = mutableListOf<String>()
-        if (!Prefs.locationGranted &&
-            ContextCompat.checkSelfPermission(ctx, Manifest.permission.ACCESS_FINE_LOCATION) !=
-            PackageManager.PERMISSION_GRANTED
-        ) {
-            missing.add(Manifest.permission.ACCESS_FINE_LOCATION)
-        }
-        if (android.os.Build.VERSION.SDK_INT >= 33 && !Prefs.notificationGranted &&
-            ContextCompat.checkSelfPermission(ctx, Manifest.permission.POST_NOTIFICATIONS) !=
-            PackageManager.PERMISSION_GRANTED
-        ) {
-            missing.add(Manifest.permission.POST_NOTIFICATIONS)
-        }
-        if (!Prefs.phoneGranted &&
-            ContextCompat.checkSelfPermission(ctx, Manifest.permission.READ_PHONE_STATE) !=
-            PackageManager.PERMISSION_GRANTED
-        ) {
-            missing.add(Manifest.permission.READ_PHONE_STATE)
-        }
-        return missing
+    private fun callText(state: String?): String = when (state) {
+        "ringing" -> getString(R.string.call_ringing)
+        "offhook" -> getString(R.string.call_offhook)
+        "idle" -> getString(R.string.call_idle)
+        else -> getString(R.string.call_unknown)
     }
 }
