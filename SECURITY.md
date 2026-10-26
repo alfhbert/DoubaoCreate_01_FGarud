@@ -27,7 +27,7 @@
 
 ## 依赖版本（定期更新）
 
-- Android Gradle Plugin 8.5.2 · Kotlin 1.9.24 · Gradle 8.7
+- Android Gradle Plugin 8.5.2 · Kotlin 1.9.24 · Gradle 8.7（wrapper 锁定）
 - Paho MQTT 1.2.5 · osmdroid 6.1.20 · Gson 2.11.0 · Material 1.12.0 · AndroidX（core 1.13.1 / appcompat 1.7.0 等）
 
 ## 加固建议（若用于更大范围）
