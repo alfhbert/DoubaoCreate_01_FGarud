@@ -1,0 +1,25 @@
+# Gradle
+.gradle/
+build/
+app/build/
+local.properties
+
+# IDE
+.idea/
+*.iml
+.vscode/
+.DS_Store
+
+# Android
+captures/
+.externalNativeBuild/
+.cxx/
+
+# 签名密钥与密码（严禁入库）
+*.jks
+*.keystore
+keystore-*
+*.jks.txt
+
+# 日志
+*.log
