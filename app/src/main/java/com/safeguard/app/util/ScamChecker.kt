@@ -1,56 +1,52 @@
 package com.safeguard.app.util
 
-import kotlin.text.Regex
-
-data class Verdict(val risk: Int, val reason: String)
-
 object ScamChecker {
 
-    private val OVERSEAS = Regex("^(00|\\+|86)1\\d{10}$")
-    private val HOTLINE = Regex("^4(00|01|08)\\d{7}$")
-    private val SERVICE_95 = Regex("^95\\d{4,5}$")
-    private val SMS_SENDER = Regex("^106\\d{6,14}$")
-    private val LONG_NUMBER = Regex("^\\d{12,20}$")
-    private val SHORT_MAINLAND = Regex("^1[3-9]\\d{9}$")
+    data class Verdict(val risk: Int, val reason: String)
 
-    fun normalize(number: String): String {
-        var n = number.replace(" ", "").replace("-", "")
-        if (n.startsWith("+86")) n = n.removePrefix("+86")
-        if (n.startsWith("0086")) n = n.removePrefix("0086")
-        if (n.startsWith("86") && n.length > 11 && SHORT_MAINLAND.matches(n.removePrefix("86"))) {
-            n = n.removePrefix("86")
+    fun check(raw: String?, inContacts: Boolean, blacklist: Set<String>): Verdict {
+        if (raw.isNullOrBlank()) return Verdict(0, "")
+        val trimmed = raw.replace(Regex("[\\s\\-()（）]"), "")
+        if (blacklist.contains(trimmed)) return Verdict(2, "该号码已在您的黑名单中")
+        if (inContacts) return Verdict(0, "")
+
+        var n = trimmed
+        var isOverseas = false
+        if (n.startsWith("+")) {
+            isOverseas = true
+            n = n.substring(1)
+        } else if (n.startsWith("00")) {
+            isOverseas = true
+            n = n.substring(2)
         }
-        return n
+
+        val digits = n.filter { it.isDigit() }
+
+        if (isOverseas) {
+            if (digits.startsWith("86") && digits.length <= 13) {
+                return checkDomestic(digits.substring(2))
+            }
+            return Verdict(2, "境外来电，谨防跨国/冒充客服诈骗")
+        }
+        return checkDomestic(digits)
     }
 
-    fun check(number: String, inContacts: Boolean, blacklist: Set<String>): Verdict {
-        val n = normalize(number)
-        if (n.isBlank()) return Verdict(0, "")
+    private fun checkDomestic(digits: String): Verdict {
+        return when {
+            digits.isEmpty() -> Verdict(0, "")
+            digits.startsWith("400") -> Verdict(1, "400热线号码，谨防冒充客服/售后诈骗")
+            digits.startsWith("800") -> Verdict(1, "800号段号码，谨防免费热线诈骗")
+            digits.startsWith("95") && digits.length in 5..8 -> Verdict(1, "95号段营销/客服号码，陌生来电需警惕")
+            digits.startsWith("106") -> Verdict(1, "短信平台号段（106…），谨防验证码类诈骗")
+            digits.length > 12 -> Verdict(1, "号码异常偏长，谨防改号诈骗")
+            digits.startsWith("110") || digits.startsWith("120") ||
+                digits.startsWith("119") || digits.startsWith("122") -> Verdict(0, "")
+            else -> Verdict(0, "")
+        }
+    }
 
-        if (blacklist.contains(n)) {
-            return Verdict(4, "号码在黑名单中")
-        }
-        if (inContacts) {
-            return Verdict(0, "")
-        }
-        if (OVERSEAS.matches(n)) {
-            return Verdict(3, "疑似境外来电（00/+/86 开头）")
-        }
-        if (SMS_SENDER.matches(n)) {
-            return Verdict(3, "疑似短信平台号段（106）来电")
-        }
-        if (LONG_NUMBER.matches(n)) {
-            return Verdict(3, "号码异常过长")
-        }
-        if (SERVICE_95.matches(n)) {
-            return Verdict(2, "95 号段服务热线（注意核实）")
-        }
-        if (HOTLINE.matches(n)) {
-            return Verdict(2, "400 客服热线（注意核实）")
-        }
-        if (!SHORT_MAINLAND.matches(n)) {
-            return Verdict(2, "号码格式异常，请注意核实")
-        }
-        return Verdict(0, "")
+    fun normalize(raw: String?): String {
+        if (raw.isNullOrBlank()) return ""
+        return raw.replace(Regex("[\\s\\-()（）]"), "")
     }
 }

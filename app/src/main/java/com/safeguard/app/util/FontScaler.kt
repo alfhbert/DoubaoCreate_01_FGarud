@@ -1,17 +1,25 @@
 package com.safeguard.app.util
 
-import android.content.Context
-import android.util.TypedValue
-import androidx.appcompat.app.AppCompatDelegate
+import android.view.View
+import android.view.ViewGroup
+import android.widget.TextView
 
 object FontScaler {
 
-    fun apply(context: Context) {
-        val config = context.resources.configuration
-        val scale = if (Prefs.bigFont) 1.3f else 1.0f
-        if (config.fontScale != scale) {
-            config.fontScale = scale
-            context.resources.updateConfiguration(config, context.resources.displayMetrics)
+    fun apply(root: View, factor: Float) {
+        if (factor <= 0f || factor == 1f) return
+        walk(root, factor)
+    }
+
+    private fun walk(v: View, factor: Float) {
+        if (v is TextView) {
+            val sp = v.textSize / v.resources.displayMetrics.scaledDensity
+            v.textSize = sp * factor
+        }
+        if (v is ViewGroup) {
+            for (i in 0 until v.childCount) {
+                walk(v.getChildAt(i), factor)
+            }
         }
     }
 }
