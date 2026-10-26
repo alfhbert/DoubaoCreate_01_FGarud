@@ -3,18 +3,12 @@
     xmlns:app="http://schemas.android.com/apk/res-auto">
     <item
         android:id="@+id/action_pair"
-        android:title="@string/menu_pair"
-        app:showAsAction="never" />
+        android:icon="@drawable/ic_pair"
+        android:title="@string/action_pair"
+        app:showAsAction="always" />
     <item
         android:id="@+id/action_antifraud"
-        android:title="@string/menu_antifraud"
-        app:showAsAction="never" />
-    <item
-        android:id="@+id/action_start"
-        android:title="@string/menu_start"
-        app:showAsAction="never" />
-    <item
-        android:id="@+id/action_stop"
-        android:title="@string/menu_stop"
-        app:showAsAction="never" />
+        android:icon="@drawable/ic_info"
+        android:title="@string/action_antifraud"
+        app:showAsAction="always" />
 </menu>

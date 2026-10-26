@@ -2,114 +2,112 @@
 <resources>
     <string name="app_name">安全守护</string>
 
+    <!-- 底部导航 -->
     <string name="tab_home">守护</string>
     <string name="tab_map">地图</string>
     <string name="tab_events">事件</string>
     <string name="tab_settings">设置</string>
 
-    <string name="menu_pair">守护配对</string>
-    <string name="menu_antifraud">防骗课堂</string>
-    <string name="menu_start">启动守护服务</string>
-    <string name="menu_stop">停止守护服务</string>
-
-    <string name="service_started">守护服务已启动</string>
-    <string name="service_stopped">守护服务已停止</string>
+    <!-- 首页 -->
+    <string name="action_pair">守护配对</string>
+    <string name="action_antifraud">防骗课堂</string>
+    <string name="service_state">守护服务运行中</string>
+    <string name="service_state_stopped">守护服务已停止</string>
+    <string name="service_state_connecting">守护服务运行中（连接中…）</string>
     <string name="service_state_unpaired">未配对，请先完成守护配对</string>
-    <string name="service_state">守护中：%1$s</string>
-    <string name="service_state_connecting">正在连接…</string>
-
-    <string name="conn_unpaired">未配对：请点击右上角「守护配对」</string>
-    <string name="conn_online">守护在线（%1$s）</string>
-    <string name="conn_connecting">正在连接守护服务…</string>
-
-    <string name="me_label">我的设备：%1$s</string>
-    <string name="battery_text">电量 %1$d%%（%2$s）</string>
+    <string name="pair_state_none">尚未配对</string>
+    <string name="pair_state_ok">已配对 · 守护码 %1$s</string>
+    <string name="btn_pair_go">去配对</string>
+    <string name="btn_pair_manage">查看/重新配对</string>
+    <string name="btn_unpair">解除配对</string>
+    <string name="card_mine">我的设备</string>
+    <string name="card_remote">对方设备</string>
     <string name="battery_unknown">电量未知</string>
-    <string name="charging">充电中</string>
-    <string name="not_charging">未充电</string>
+    <string name="battery_value">电量 %1$d%%</string>
+    <string name="charging_yes">充电中</string>
+    <string name="charging_no">未充电</string>
+    <string name="charging_unknown">充电状态未知</string>
+    <string name="call_idle">通话：空闲</string>
+    <string name="call_ringing">通话：来电响铃</string>
+    <string name="call_offhook">通话：通话中</string>
+    <string name="call_unknown">通话：未知</string>
+    <string name="loc_none">位置：尚未获取到定位</string>
+    <string name="loc_value">位置：纬度 %1$.4f，经度 %2$.4f（精度约 %3$d 米）</string>
+    <string name="remote_offline">对方离线（最后更新 %1$s）</string>
+    <string name="remote_distance">距我约 %1$s</string>
+    <string name="remote_unknown">对方设备在线状态获取中…</string>
+    <string name="scam_badge">可疑号码提醒：%1$s</string>
+    <string name="btn_sos">SOS 紧急求助</string>
+    <string name="btn_map">查看地图</string>
+    <string name="btn_events">事件记录</string>
+    <string name="btn_antifraud">防骗课堂</string>
 
-    <string name="remote_unpaired_or_offline">对方尚未配对或离线</string>
-    <string name="loc_text">位置：%1$s</string>
-    <string name="loc_none">位置：对方暂未共享</string>
-    <string name="distance_text">双方距离：%1$s</string>
-    <string name="call_idle">通话状态：空闲</string>
-    <string name="call_ringing">通话状态：来电响铃</string>
-    <string name="call_offhook">通话状态：通话中</string>
+    <!-- 地图 -->
+    <string name="map_follow">跟随对方</string>
+    <string name="map_me">我的位置</string>
+    <string name="map_remote">对方位置</string>
 
-    <string name="sos_button">紧急求助 SOS</string>
-    <string name="sos_unpaired_hint">请先完成守护配对才能发送 SOS</string>
-    <string name="permission_hint">缺少必要权限：%1$s，请允许后使用守护功能</string>
+    <!-- 设置 -->
+    <string name="set_device_name">设备名称</string>
+    <string name="set_device_name_hint">给这台手机起个名字（如：爸爸的手机）</string>
+    <string name="btn_save">保存</string>
+    <string name="set_service">守护服务</string>
+    <string name="set_service_desc">开启后在后台持续共享电量、位置和通话状态</string>
+    <string name="set_battery_threshold">低电量提醒阈值</string>
+    <string name="set_battery_threshold_value">对方电量低于 %1$d%% 时提醒我</string>
+    <string name="set_safe_zone">安全区域提醒</string>
+    <string name="set_safe_zone_desc">对方离开设定区域时提醒我</string>
+    <string name="btn_set_here">以当前位置为中心</string>
+    <string name="set_safe_zone_radius">安全区域半径</string>
+    <string name="set_safe_zone_radius_value">半径 %1$d 米</string>
+    <string name="set_safe_zone_none">尚未设置安全中心位置</string>
+    <string name="set_blacklist">陌生号码黑名单</string>
+    <string name="set_blacklist_hint">输入号码后添加，来电/去电命中即告警</string>
+    <string name="btn_add">添加</string>
+    <string name="set_large_font">超大字体模式</string>
+    <string name="set_large_font_desc">为老年用户加大界面字号</string>
+    <string name="about">关于</string>
+    <string name="about_version">版本 1.0.0 · 供家人之间相互守护使用</string>
+    <string name="about_disclaimer">本应用通过公共 MQTT 代理进行加密同步，供演示与家人试用；号码识别为启发式规则，不能替代官方反诈中心。</string>
 
-    <string name="map_hint_unpaired">未配对：配对后才能看到对方位置</string>
-    <string name="map_hint_waiting">等待定位数据…</string>
-    <string name="map_hint_both">双方位置已显示</string>
-    <string name="map_hint_follow_remote">地图跟随对方</string>
-    <string name="map_hint_follow_me">地图跟随我</string>
-
-    <string name="events_clear">清空事件记录</string>
-    <string name="events_clear_short">清空事件记录（设置页）</string>
-    <string name="events_cleared">事件记录已清空</string>
-
+    <!-- 配对 -->
     <string name="pair_title">守护配对</string>
-    <string name="pair_desc">两台手机配对后，可互相查看电量、位置与通话状态。6 位守护码只用于协商加密，不会上传到任何服务器。</string>
-    <string name="pair_generate">生成守护码（我是发起方）</string>
-    <string name="pair_code_hint">输入对方提供的 6 位守护码</string>
-    <string name="pair_join">加入守护（我是加入方）</string>
-    <string name="pair_unpair">解除配对</string>
-    <string name="pair_code_generated">守护码已生成并复制到剪贴板，请告知对方</string>
-    <string name="pair_code_invalid">守护码应为 6 位数字</string>
-    <string name="pair_unpaired">已解除配对</string>
+    <string name="pair_desc">两台手机输入同一个 6 位守护码即可相互守护。电量、位置、通话状态将实时同步给对方。</string>
+    <string name="btn_create_code">生成守护码</string>
+    <string name="btn_start_pair">使用此码，开始守护</string>
+    <string name="pair_or">或</string>
+    <string name="pair_input_hint">输入对方的 6 位守护码</string>
+    <string name="btn_join_pair">加入守护</string>
+    <string name="pair_code_bad">请输入 6 位数字守护码</string>
+    <string name="pair_created_hint">请把下方守护码告诉对方手机，并在对方手机上选择「加入守护」输入该码</string>
+    <string name="pair_unpaired_hint">两台手机需同时在线才能看到彼此状态</string>
 
-    <string name="settings_service">守护服务（前台运行）</string>
-    <string name="settings_name_hint">我的设备名称</string>
-    <string name="save">保存</string>
-    <string name="saved">已保存</string>
-    <string name="settings_big_font">超大字体（适老化）</string>
-    <string name="font_changed">字号设置已生效，重启界面后完全生效</string>
-    <string name="settings_threshold">低电量提醒阈值</string>
-    <string name="threshold_title">选择低电量提醒阈值</string>
-    <string name="threshold_text">低电量阈值：%1$d%%</string>
-    <string name="threshold_value">%1$d%%</string>
-    <string name="settings_zone">设置安全区域（中心经纬度 + 半径）</string>
-    <string name="settings_clear_zone">清除安全区域</string>
-    <string name="zone_title">设置安全区域</string>
-    <string name="zone_lat_hint">中心纬度（如 45.8038）</string>
-    <string name="zone_lng_hint">中心经度（如 126.5349）</string>
-    <string name="zone_radius_hint">半径（米，如 500）</string>
-    <string name="zone_text">安全区域：(%1$.4f, %2$.4f) 半径 %3$d 米</string>
-    <string name="zone_disabled">安全区域：未启用</string>
-    <string name="zone_invalid">输入无效，请检查</string>
-    <string name="settings_blacklist">添加黑名单号码</string>
-    <string name="settings_clear_blacklist">清空黑名单</string>
-    <string name="blacklist_title">添加黑名单号码</string>
-    <string name="blacklist_hint">输入完整号码</string>
-    <string name="blacklist_empty">黑名单：空</string>
-    <string name="settings_bg_location">允许后台定位（Android 10+ 需单独授予）</string>
-    <string name="bg_location_done">后台定位权限已满足</string>
+    <!-- 防骗课堂 -->
+    <string name="af_title">防骗课堂</string>
+    <string name="af_sec1_title">常见骗术，请牢记</string>
+    <string name="af_sec1_body">① 冒充公检法/银行客服，称你涉嫌犯罪要求转账；② 冒充平台客服退款理赔，引导你操作转账；③ 高收益理财、刷单返利；④ 保健品/医疗器械上门推销；⑤ 中奖、退税、补贴；⑥ 假熟人借钱、冒充子女出事要钱。</string>
+    <string name="af_sec2_title">防骗三不原则</string>
+    <string name="af_sec2_body">不听：陌生电话不谈钱；不信：自称官方要先挂断自行回拨核实；不转账：任何要求转账、提供验证码、共享屏幕的都是诈骗。拿不准先跟家人商量。</string>
+    <string name="af_sec3_title">本应用如何帮您</string>
+    <string name="af_sec3_body">可疑来电自动提醒（境外、400/800、95 号段等）；一键 SOS 求助并附带位置；电量低、离开安全区域、陌生来电都会通知守护的另一方。</string>
 
-    <string name="ok">确定</string>
-    <string name="cancel">取消</string>
+    <!-- 事件 -->
+    <string name="events_empty">还没有事件记录</string>
+    <string name="btn_clear_events">清空记录</string>
+    <string name="btn_remove">移除</string>
 
-    <string name="antifraud_title">防骗课堂</string>
-    <string name="antifraud_guide">
-常见骗术与防骗要点：
+    <!-- 地图 -->
+    <string name="map_unfollow">取消跟随</string>
 
-1. 「公检法」来电：自称公检法、说你涉案要转账到安全账户——公检法不会电话办案，更不会要求转账。挂断并拨打 110 核实。
+    <!-- 设置补充 -->
+    <string name="set_safe_zone_off">安全区域提醒已关闭</string>
+    <string name="set_blacklist_empty">暂无黑名单号码</string>
 
-2. 「客服退款/理赔」：自称电商客服，说商品有问题要退款，引导你下载 App 或开启屏幕共享——不要开启屏幕共享，不要透露验证码，官方渠道核实。
+    <!-- 配对补充 -->
+    <string name="pair_current_hint">当前守护码：%1$s · 两台手机需同时在线才能看到彼此状态</string>
 
-3. 「高收益理财/刷单返利」：先给小额返利，再诱导大额投入——天上不会掉馅饼，刷单返利都是诈骗。
-
-4. 「家人出事」紧急电话：冒充子女/亲属称出事急需用钱——先拨通家人常用号码核实，不要急着转账。
-
-5. 「疫苗/医保/社保」短信：附带链接要求填写信息——官方机构不会发短信要你点链接填卡号。
-
-6. 「冒充熟人换号」：短信称换号，随后借钱——用原号码或视频通话核实身份。
-
-通用守则：
-- 任何情况不向陌生人转账、不提供验证码、不共享屏幕；
-- 转账前先和家人确认；
-- 涉及「安全账户」「保证金」「解冻」等词，基本可判定为诈骗；
-- 安装国家反诈中心 App，被骗或疑似被骗请拨打 96110，紧急情况拨打 110。
-    </string>
+    <!-- 通用提示 -->
+    <string name="toast_saved">已保存</string>
+    <string name="toast_zone_set">已设置安全中心</string>
+    <string name="toast_no_loc">暂未获取到定位，请稍后重试</string>
 </resources>
